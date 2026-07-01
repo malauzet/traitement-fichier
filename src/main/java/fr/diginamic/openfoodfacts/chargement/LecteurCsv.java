@@ -3,7 +3,6 @@ package fr.diginamic.openfoodfacts.chargement;
 import fr.diginamic.openfoodfacts.modele.*;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,7 +15,7 @@ public class LecteurCsv {
     private static final String SEPARATEUR_COLONNE = "\\|";
     private static final String[] SEPARATEURS_LISTE = {",", ";"};
 
-    public Stock chargerStock(String chemin) throws IOException {
+    public Stock chargerStock(String chemin) {
 
         Stock stock = new Stock();
         List<String> lignes = lireLignes(chemin);
@@ -46,15 +45,6 @@ public class LecteurCsv {
         return stock;
     }
 
-    // Lit l'entête du CSV
-    // renvoie une faite par construireIndexColonnes
-    public Map<String, Integer> lireEntete(String chemin) throws IOException {
-        try (BufferedReader br = new BufferedReader(new FileReader(chemin))) {
-            String ligneEntete = br.readLine();
-            return construireIndexColonnes(ligneEntete);
-        }
-    }
-
     // Prends une entete de CSV en paramètre et renvoie une map d'index des colonnes du CSV
     public Map<String, Integer> construireIndexColonnes(String entete) {
 
@@ -76,14 +66,12 @@ public class LecteurCsv {
         try (BufferedReader br = new BufferedReader(new FileReader(chemin))) {
 
             List<String> lignes = new ArrayList<>();
-            String ligne = null;
+            String ligne;
 
             while ((ligne = br.readLine()) != null) {
                 lignes.add(ligne.trim());
             }
             return lignes;
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -100,7 +88,7 @@ public class LecteurCsv {
         String texteCategorie = valeur(valeurs, index, "categorie");
         produit.setCategorie(new Categorie(texteCategorie));
 
-        // On prend seulement la 1ère marque (Ex: ligne 6 du CSV a deux marques)
+        // On prend seulement la première marque (Exemple : ligne 6 du CSV à deux marques).
         String texteMarque = valeur(valeurs, index, "marque");
         String premiereMarque = texteMarque.split(",", 2)[0].trim();
         produit.setMarque(new Marque(premiereMarque));
@@ -164,6 +152,19 @@ public class LecteurCsv {
             return resultat;
         }
 
+        String[] elements = getStrings(valeur);
+
+        // Pour chaque élément du tableau, on enlève ses espaces et on l'ajoute à la liste sinon on ne fait rien.
+        for (String element : elements) {
+            String libelle = element.trim();
+            if (!libelle.isEmpty()) {
+                resultat.add(libelle);
+            }
+        }
+        return resultat;
+    }
+
+    private static String[] getStrings(String valeur) {
         String separateurTrouve = null;
         // Pour chaque séparateur, on regarde s'il est dans 'valeur' s'il est dedans, on le garde et on sort du for.
         for (String separateur : SEPARATEURS_LISTE) {
@@ -175,16 +176,7 @@ public class LecteurCsv {
 
         // Si le séparateur existe on l'utilise pour split sinon on ajoute la valeur directement
         // Pattern.quote(...) serait utile si ma liste de séparateurs avait '|' par exemple.
-        String[] elements = (separateurTrouve != null) ? valeur.split(separateurTrouve) : new String[]{valeur};
-
-        // Pour chaque élément du tableau, on enlève ses espaces et on l'ajoute à la liste sinon on ne fait rien.
-        for (String element : elements) {
-            String libelle = element.trim();
-            if (!libelle.isEmpty()) {
-                resultat.add(libelle);
-            }
-        }
-        return resultat;
+        return (separateurTrouve != null) ? valeur.split(separateurTrouve) : new String[]{valeur};
     }
 
     private double nombre(String valeur) {

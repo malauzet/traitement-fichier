@@ -2,7 +2,6 @@ package fr.diginamic.openfoodfacts.menu.services;
 
 import fr.diginamic.openfoodfacts.modele.Produit;
 import fr.diginamic.openfoodfacts.modele.Stock;
-import fr.diginamic.openfoodfacts.utils.ComparatorScoreNutritionnel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,15 +22,6 @@ public class MeilleursProduitsPourCategorie extends MenuService {
                 topProduits.add(produit);
             }
         }
-        topProduits.sort(new ComparatorScoreNutritionnel());
-
-        if (topProduits.isEmpty()) {
-            System.out.println("Aucun produit trouvé.");
-            return;
-        }
-        for  (Produit produit : topProduits) {
-            System.out.println(produit);
-        }
-        System.out.println(topProduits.size() + " produit(s) trouvé(s).");
+        trierEtAfficherParScore(topProduits);
     }
 }
