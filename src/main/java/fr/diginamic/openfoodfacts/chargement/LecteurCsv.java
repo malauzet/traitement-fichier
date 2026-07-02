@@ -1,6 +1,7 @@
 package fr.diginamic.openfoodfacts.chargement;
 
 import fr.diginamic.openfoodfacts.modele.*;
+import fr.diginamic.openfoodfacts.utils.Normaliseur;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -15,7 +16,17 @@ public class LecteurCsv {
     private static final String SEPARATEUR_COLONNE = "\\|";
     private static final String[] SEPARATEURS_LISTE = {",", ";"};
 
+    // Caches d'instances déjà connues, indexées par clé normalisée.
+    private final Map<String, Ingredient> ingredientsConnus = new HashMap<>();
+    private final Map<String, Allergene> allergenesConnus = new HashMap<>();
+    private final Map<String, Additif> additifsConnus = new HashMap<>();
+
     public Stock chargerStock(String chemin) {
+
+        // On repart d'un cache vide à chaque nouveau chargement de fichier.
+        ingredientsConnus.clear();
+        allergenesConnus.clear();
+        additifsConnus.clear();
 
         Stock stock = new Stock();
         List<String> lignes = lireLignes(chemin);
@@ -121,7 +132,8 @@ public class LecteurCsv {
         donnees.setHuileDePalme(booleen(valeur(valeurs, index, "presencehuilepalme")));
         produit.setDonneesNutritionnelles(donnees);
 
-        for (String libelle : decouperListe(valeur(valeurs, index, "ingredients"))) {
+        // Version v1, avant normalisation.
+        /*for (String libelle : decouperListe(valeur(valeurs, index, "ingredients"))) {
             produit.ajouterIngredient(new Ingredient(libelle));
         }
         for (String libelle : decouperListe(valeur(valeurs, index, "allergenes"))) {
@@ -129,9 +141,43 @@ public class LecteurCsv {
         }
         for (String libelle : decouperListe(valeur(valeurs, index, "additifs"))) {
             produit.ajouterAdditif(new Additif(libelle));
+        }*/
+
+        for (String libelle : decouperListe(valeur(valeurs, index, "ingredients"))) {
+            produit.ajouterIngredient(recupererOuCreerIngredient(libelle));
+        }
+        for (String libelle : decouperListe(valeur(valeurs, index, "allergenes"))) {
+            produit.ajouterAllergene(recupererOuCreerAllergene(libelle));
+        }
+        for (String libelle : decouperListe(valeur(valeurs, index, "additifs"))) {
+            produit.ajouterAdditif(recupererOuCreerAdditif(libelle));
         }
 
         return produit;
+    }
+
+    // Renvoie l'instance Ingredient partagée correspondant au libellé (créée à la première
+    // rencontre de sa clé normalisée), afin de fusionner les variantes ("œuf"/"oeufs"/"en:eggs"...)
+    // et de réutiliser la mémoire.
+    private Ingredient recupererOuCreerIngredient(String libelleBrut) {
+        return ingredientsConnus.computeIfAbsent(
+                Normaliseur.cle(libelleBrut),
+                cle -> new Ingredient(Normaliseur.libellePropre(libelleBrut))
+        );
+    }
+
+    private Allergene recupererOuCreerAllergene(String libelleBrut) {
+        return allergenesConnus.computeIfAbsent(
+                Normaliseur.cle(libelleBrut),
+                cle -> new Allergene(Normaliseur.libellePropre(libelleBrut))
+        );
+    }
+
+    private Additif recupererOuCreerAdditif(String libelleBrut) {
+        return additifsConnus.computeIfAbsent(
+                Normaliseur.cle(libelleBrut),
+                cle -> new Additif(Normaliseur.libellePropre(libelleBrut))
+        );
     }
 
     // Renvoie la valeur d'une colonne
